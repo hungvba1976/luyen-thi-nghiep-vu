@@ -2,7 +2,7 @@
 "use strict";
 
 const DATA_URL = "./data/banks.json";
-const APP_VERSION = "Mobile Offline V0.1";
+const APP_VERSION = "Mobile Offline V0.1.1";
 const EXAM_SECONDS = 45 * 60;
 
 const GROUP_B = ["khdn","khcn","tham_dinh","ktgd_noi_bo","ktgd_khach_hang","ttqt_tttm","xu_ly_no"];
@@ -512,7 +512,11 @@ function renderSession(){
   document.querySelectorAll('input[name="answer"]').forEach(radio=>{
     radio.onchange=()=>{
       if(currentSession.kind==="practice"){
-        if(!state.locked) state.selectedOptionId=radio.value;
+        if(!state.locked){
+          state.selectedOptionId=radio.value;
+          const gradeButton = $("#gradeBtn");
+          if(gradeButton) gradeButton.disabled = false;
+        }
       }else{
         state.selectedOptionId=radio.value; // editable until submit
       }
