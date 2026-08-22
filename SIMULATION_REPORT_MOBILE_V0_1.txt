@@ -1,0 +1,6 @@
+MOBILE OFFLINE V0.1 - SIMULATION REPORT
+PASS: 18 question banks embedded.
+PASS: total questions = 4967.
+PASS: KTGS fixed-order questions = 27.
+PASS: app shell, manifest, service worker and offline data are present.
+NOTE: installation/offline behavior must be tested on real Android/iOS via HTTPS.
