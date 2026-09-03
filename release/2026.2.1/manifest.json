@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "bankVersion": "2026.2.1",
+  "publishedAt": "2026-09-03T16:49:12+07:00",
+  "questionCount": 3943,
+  "newCount": 2173,
+  "updatedCount": 241,
+  "checksumSha256": "d1853436d0d5830de5957abe8520b27c129918114b0ba6b566234e7b5e65830c",
+  "banksUrl": "./release/2026.2.1/banks.json"
+}
