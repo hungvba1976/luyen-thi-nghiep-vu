@@ -1,0 +1,14 @@
+BỘ LUYỆN THI NGHIỆP VỤ — HƯỚNG DẪN CẬP NHẬT
+
+Phiên bản: Mobile V1.3.0 FINAL CLEAN
+
+1. Điện thoại / PWA
+- Sử dụng ứng dụng như bình thường.
+- Không cần xóa dữ liệu hoặc cài lại khi ứng dụng đang hoạt động ổn định.
+
+2. Máy tính
+- Nếu máy tính vẫn hiển thị phiên bản/giao diện cũ sau khi có bản phát hành mới, nhấn Ctrl + F5 để tải lại toàn bộ trang và bỏ qua cache trình duyệt.
+- Chỉ cần dùng Ctrl + F5 khi thực sự thấy máy vẫn ở phiên bản cũ.
+
+3. Lưu ý
+- Không xóa dữ liệu trình duyệt nếu không cần thiết, vì tiến độ và lịch sử luyện thi được lưu trên thiết bị.
