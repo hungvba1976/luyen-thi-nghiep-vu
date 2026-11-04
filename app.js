@@ -1,7 +1,7 @@
 "use strict";
 
-const APP_VERSION = "Mobile V1.3.0 FINAL CLEAN";
-const APP_BUILD_ID = "v1.3.0-final-clean-release";
+const APP_VERSION = "Mobile V1.3.1 CAMPAIGN MULTI-TOPIC";
+const APP_BUILD_ID = "v1.3.1-campaign-multi-topic-prod01";
 const BASELINE_RELEASE = {
   "schemaVersion": 2,
   "bankVersion": "1.0.0",
@@ -26,6 +26,28 @@ const EXAM_HISTORY_LIMIT = 30;
 const CAMPAIGN_REGISTRY_KEY = `${STORAGE_PREFIX}campaignRegistry`;
 const CAMPAIGN_CATALOG_URL = "./campaigns/catalog.json";
 const CAMPAIGN_CACHE_NAME = "luyenthi-v130-campaign-modules";
+const VIEW_STATE_KEY = `${STORAGE_PREFIX}viewState`;
+
+function rememberView(name, params={}){
+  try{
+    sessionStorage.setItem(VIEW_STATE_KEY,JSON.stringify({name,params,scrollY:0,savedAt:Date.now(),buildId:APP_BUILD_ID}));
+  }catch(e){ console.warn("Không lưu được trạng thái màn hình:",e); }
+}
+function updateRememberedScroll(){
+  try{
+    const raw=sessionStorage.getItem(VIEW_STATE_KEY);if(!raw)return;
+    const state=JSON.parse(raw);if(!state||typeof state!=="object")return;
+    state.scrollY=Math.max(0,Math.round(window.scrollY||0));state.savedAt=Date.now();
+    sessionStorage.setItem(VIEW_STATE_KEY,JSON.stringify(state));
+  }catch(e){}
+}
+function rememberedView(){
+  try{const s=JSON.parse(sessionStorage.getItem(VIEW_STATE_KEY)||"null");return s&&typeof s==="object"?s:null;}catch{return null;}
+}
+function restoreRememberedScroll(state){
+  const y=Math.max(0,Number(state?.scrollY)||0);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
+}
 
 
 const GROUP_B = ["khdn","khcn","tham_dinh","ktgd_noi_bo","ktgd_khach_hang","ttqt_tttm","xu_ly_no"];
@@ -254,7 +276,7 @@ function saveLastResult(result){
 }
 function loadLastResult(){ try{return JSON.parse(localStorage.getItem(LAST_RESULT_KEY)||"null");}catch{return null;} }
 function practiceResultScope(session){
-  if(session?.campaignId) return `campaign:${session.campaignId}`;
+  if(session?.campaignId) return `campaign:${session.campaignId}${session.campaignTopicId?`:topic:${session.campaignTopicId}`:""}`;
   return `bank:${session?.bankId||"unknown"}:${session?.newOnly?"new":"all"}`;
 }
 function practiceLastResultKey(session){ return `${PRACTICE_LAST_PREFIX}${encodeURIComponent(practiceResultScope(session))}`; }
@@ -290,7 +312,7 @@ function practiceComparisonHtml(previous,current){
 }
 
 function examResultScope(session){
-  if(session?.campaignId) return `campaign:${session.campaignId}`;
+  if(session?.campaignId) return `campaign:${session.campaignId}${session.campaignTopicId?`:topic:${session.campaignTopicId}`:""}`;
   return `bank:${session?.bankId||"unknown"}:group:${session?.groupCode||"unknown"}`;
 }
 function loadExamHistory(){
@@ -305,7 +327,7 @@ function examHistoryRecord(session){
   const total=session.questionIds.length, blank=session.questionIds.filter(qid=>!examState(session,qid).selectedOptionId).length;
   const score=Number(session.score)||0, wrong=Math.max(0,total-score-blank);
   const elapsed=Math.max(0,Math.min((session.examMinutes?session.examMinutes*60:EXAM_SECONDS),Math.round(((session.submittedAt||Date.now())-(session.startedAt||Date.now()))/1000)));
-  return {kind:"exam",sessionId:session.sessionId,scope:examResultScope(session),campaignId:session.campaignId||null,campaignName:session.campaignName||null,bankId:session.bankId||null,bankName:session.bankName||"",groupCode:session.groupCode||null,candidateGroup:session.candidateGroup||"",score,total,wrong,blank,percent:total?score*100/total:0,elapsedSeconds:elapsed,completedAt:session.submittedAt||Date.now()};
+  return {kind:"exam",sessionId:session.sessionId,scope:examResultScope(session),campaignId:session.campaignId||null,campaignName:session.campaignName||null,campaignTopicId:session.campaignTopicId||null,campaignTopicName:session.campaignTopicName||null,bankId:session.bankId||null,bankName:session.bankName||"",groupCode:session.groupCode||null,candidateGroup:session.candidateGroup||"",score,total,wrong,blank,percent:total?score*100/total:0,elapsedSeconds:elapsed,completedAt:session.submittedAt||Date.now()};
 }
 function saveExamHistory(session){
   try{
@@ -324,9 +346,10 @@ function examComparisonHtml(previous,current){
   return `<section class="panel"><div class="row between"><div><div class="section-title">So với lần Thi thử gần nhất</div><div class="small mt8">Lần trước: ${previous.score}/${previous.total} · ${formatPercent(Number(previous.percent))}${when?` · ${when}`:""}</div><div class="small mt8">Lần này: ${current.score}/${current.total} · ${formatPercent(Number(current.percent))}</div></div><span class="badge ${tone}">${trend}</span></div></section>`;
 }
 function renderExamHistory(){
+  rememberView("examHistory");
   unbindSessionActionBar();document.body.classList.remove("session-mode");
   const h=loadExamHistory();
-  const rows=h.length?h.map(r=>{const when=new Intl.DateTimeFormat("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(r.completedAt));return `<div class="list-line"><span><b>${esc(r.campaignName||r.bankName)}</b><br><span class="small">${esc(r.campaignId?"Cuộc thi phong trào":r.candidateGroup)} · ${when}<br>Đúng ${r.score} · Sai ${r.wrong} · Bỏ trống ${r.blank} · ${formatDuration(r.elapsedSeconds)}</span></span><b>${r.score}/${r.total}</b></div>`;}).join(""):`<div class="notice info">Chưa có kết quả Thi thử nào được lưu.</div>`;
+  const rows=h.length?h.map(r=>{const when=new Intl.DateTimeFormat("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(new Date(r.completedAt));return `<div class="list-line"><span><b>${esc(r.campaignName||r.bankName)}</b><br><span class="small">${esc(r.campaignId?(r.campaignTopicName||"Cuộc thi phong trào"):r.candidateGroup)} · ${when}<br>Đúng ${r.score} · Sai ${r.wrong} · Bỏ trống ${r.blank} · ${formatDuration(r.elapsedSeconds)}</span></span><b>${r.score}/${r.total}</b></div>`;}).join(""):`<div class="notice info">Chưa có kết quả Thi thử nào được lưu.</div>`;
   app().innerHTML=`<section class="panel"><div class="row"><button class="btn3d" id="backHistory">‹</button><div><div class="eyebrow">THI THỬ</div><div class="title mt8">Lịch sử kết quả</div></div></div></section><section class="panel"><div class="small">Lưu tối đa ${EXAM_HISTORY_LIMIT} kết quả gần nhất trên thiết bị để theo dõi tiến bộ.</div><div class="list-lines mt12">${rows}</div></section>`;
   $("#backHistory").onclick=renderHome;
 }
@@ -388,6 +411,33 @@ async function setActiveRelease(meta){
 function activeReleaseFromStorage(){
   try{return JSON.parse(localStorage.getItem(ACTIVE_RELEASE_KEY)||"null")||BASELINE_RELEASE;}catch{return BASELINE_RELEASE;}
 }
+function sameBankRelease(a,b){
+  if(!a||!b)return false;
+  if(String(a.bankVersion||"")!==String(b.bankVersion||""))return false;
+  // Nếu nhà phát hành thay nội dung nhưng lỡ giữ nguyên số phiên bản, checksum khác
+  // vẫn được coi là Bank đã thay đổi để không bỏ sót cảnh báo cho người dùng.
+  if(a.checksumSha256&&b.checksumSha256&&String(a.checksumSha256)!==String(b.checksumSha256))return false;
+  return true;
+}
+let bankReminderChecking=false;
+async function checkBankUpdateReminder(){
+  if(bankReminderChecking||currentSession||$("#modalWrap"))return;
+  bankReminderChecking=true;
+  try{
+    const latest=await fetchJson(`${LATEST_URL}?t=${Date.now()}`,{cache:"no-store"});
+    if(sameBankRelease(latest,ACTIVE_RELEASE))return;
+    pendingUpdate=latest;
+    showModal(`<div class="eyebrow">NGÂN HÀNG CÂU HỎI</div><h3 class="mt8">Đã có bộ câu hỏi mới, bạn có muốn cập nhật không?</h3>
+      <div class="small mt8">Bank đang dùng: ${esc(ACTIVE_RELEASE.bankVersion)} · Bank mới: ${esc(latest.bankVersion)}</div>
+      <div class="notice info mt12">${Number(latest.newCount||0)} câu mới · ${Number(latest.updatedCount||0)} câu cập nhật · ${Number(latest.questionCount||0)} câu tổng.</div>
+      <div class="modal-actions"><button class="btn3d primary" id="reminderUpdateNow">⬇️ Cập nhật ngay</button><button class="btn3d" id="reminderLater">Để sau</button></div>`);
+    $("#reminderUpdateNow").onclick=()=>{closeModal();renderUpdate().then(()=>checkForUpdate());};
+    $("#reminderLater").onclick=closeModal;
+  }catch(e){
+    // Nhắc cập nhật là best-effort: mất mạng/không tải được latest không được cản sử dụng offline.
+    console.warn("Không kiểm tra được Bank mới để nhắc người dùng:",e);
+  }finally{bankReminderChecking=false;}
+}
 function bank(bankId){ return CURRENT_DATA.banks[bankId]; }
 function manifest(){ return CURRENT_DATA.manifest; }
 function specialistManifest(){ return manifest().filter(x=>x.group==="Chuyên môn nghiệp vụ"); }
@@ -431,7 +481,29 @@ function campaignSessionIsActive(session){
   return !!entry && campaignStatus(entry)==="ACTIVE";
 }
 function campaignPrefix(id){return `${STORAGE_PREFIX}campaign:${id}:`;}
-function campaignStorageKey(id,kind){return `campaign:${id}:${kind}`;}
+function campaignStorageKey(id,kind,topicId=null){
+  // Preserve exact legacy key for all-topics and single-topic Campaign V1.
+  return topicId?`campaign:${id}:topic:${topicId}:${kind}`:`campaign:${id}:${kind}`;
+}
+function campaignHasTopics(c){return !!c?.multiTopicEnabled&&Array.isArray(c.topics)&&c.topics.length>0;}
+function campaignSelectedTopicKey(c){return `${campaignPrefix(c.moduleId)}selectedTopic`;}
+function selectedCampaignTopic(c){
+  if(!campaignHasTopics(c))return null;
+  let id=null;try{id=localStorage.getItem(campaignSelectedTopicKey(c));}catch{}
+  return c.topics.some(t=>t.topicId===id)?id:null;
+}
+function setSelectedCampaignTopic(c,id){
+  if(!campaignHasTopics(c))return;
+  if(id!==null&&!c.topics.some(t=>t.topicId===id))return;
+  try{localStorage.setItem(campaignSelectedTopicKey(c),id||"");}catch{}
+}
+function selectedCampaignPool(c,topicId=selectedCampaignTopic(c)){
+  return topicId?c.questions.filter(q=>q.topicId===topicId):c.questions;
+}
+function campaignTopicName(c,id){return c.topics?.find(t=>t.topicId===id)?.name||"Toàn bộ chuyên đề";}
+function setSessionCampaignTopicSelection(s){
+  if(s?.campaignId&&ACTIVE_CAMPAIGN&&campaignHasTopics(ACTIVE_CAMPAIGN))setSelectedCampaignTopic(ACTIVE_CAMPAIGN,s.campaignTopicId||null);
+}
 function activeCampaigns(){return CAMPAIGN_CATALOG.filter(x=>campaignStatus(x)==="ACTIVE");}
 function loadCampaignRegistry(){
   try{return JSON.parse(localStorage.getItem(CAMPAIGN_REGISTRY_KEY)||"[]");}catch{return [];}
@@ -516,13 +588,20 @@ function scheduleCampaignMaintenance(){
     const previousIds=new Set(activeCampaigns().map(x=>x.moduleId));
     await loadCampaignCatalog();
     const expiredCurrent=!!currentSession?.campaignId&&!campaignSessionIsActive(currentSession);
+    const activeCampaignExpired=!!ACTIVE_CAMPAIGN?.moduleId && !CAMPAIGN_CATALOG.some(x=>x.moduleId===ACTIVE_CAMPAIGN.moduleId && campaignStatus(x)==="ACTIVE");
     await cleanupExpiredCampaigns();
 
     if(expiredCurrent){
       stopTimer();currentSession=null;ACTIVE_CAMPAIGN=null;CURRENT_DATA=ACTIVE_DATA;
       alert("Cuộc thi phong trào đã kết thúc. Module và dữ liệu của cuộc thi đã được gỡ.");
       renderHome();
-    }else if(!currentSession){
+    }else if(activeCampaignExpired){
+      ACTIVE_CAMPAIGN=null;CURRENT_DATA=ACTIVE_DATA;
+      alert("Cuộc thi phong trào đã kết thúc. Module đã được gỡ khỏi danh sách đang hoạt động.");
+      renderHome();
+    }else if(!currentSession && atHomeView()){
+      // Chỉ refresh Home khi người dùng đang thực sự ở Home. Trước đây mọi
+      // màn hình setup/update đều bị đá về Home sau mỗi nhịp bảo trì Campaign.
       renderHome();
     }
     scheduleCampaignMaintenance();
@@ -544,34 +623,50 @@ async function loadCampaign(entry){
   const qPayload=JSON.parse(new TextDecoder("utf-8").decode(buffer));
   if(qPayload.campaignId!==entry.moduleId||!Array.isArray(qPayload.questions))throw new Error("Dữ liệu câu hỏi Campaign không hợp lệ.");
 
+  // Multi-Topic V2 is optional: legacy Campaign V1 continues unchanged.
+  if(module.multiTopicEnabled){
+    if(!Array.isArray(module.topics)||!module.topics.length)throw new Error("Thiếu danh mục chuyên đề của Campaign.");
+    const topicIds=new Set(),counts=new Map();
+    for(const t of module.topics){
+      if(typeof t.topicId!=="string"||!t.topicId||topicIds.has(t.topicId)||typeof t.name!=="string")throw new Error("Danh mục chuyên đề không hợp lệ.");
+      topicIds.add(t.topicId);counts.set(t.topicId,0);
+    }
+    for(const q of qPayload.questions){
+      if(!topicIds.has(q.topicId))throw new Error("Câu hỏi có chuyên đề không hợp lệ.");
+      counts.set(q.topicId,counts.get(q.topicId)+1);
+    }
+    if(module.topics.some(t=>counts.get(t.topicId)!==Number(t.questionCount)))throw new Error("Số câu theo chuyên đề không khớp dữ liệu.");
+  }
   const campaign={...module,questions:qPayload.questions};
   campaignCache.set(entry.moduleId,campaign);
   return campaign;
 }
-function campaignLastResultKey(id){return `${campaignPrefix(id)}lastResult`;}
-function saveCampaignLastResult(id,result){
-  try{ result.completedAt=result.completedAt||Date.now();localStorage.setItem(campaignLastResultKey(id),JSON.stringify(result));return true; }
+function campaignLastResultKey(id,topicId=null){return `${campaignPrefix(id)}${topicId?`topic:${topicId}:`:""}lastResult`;}
+function saveCampaignLastResult(id,result,topicId=null){
+  try{ result.completedAt=result.completedAt||Date.now();localStorage.setItem(campaignLastResultKey(id,topicId),JSON.stringify(result));return true; }
   catch(e){console.warn("Không lưu được kết quả Campaign gần nhất:",e);return false;}
 }
-function loadCampaignLastResult(id){try{return JSON.parse(localStorage.getItem(campaignLastResultKey(id))||"null");}catch{return null;}}
+function loadCampaignLastResult(id,topicId=null){try{return JSON.parse(localStorage.getItem(campaignLastResultKey(id,topicId))||"null");}catch{return null;}}
 function newCampaignPractice(campaign,mode){
   const sessionId=uid("campaign_practice");
-  let ids=campaign.questions.map(q=>q.id);
+  const topicId=selectedCampaignTopic(campaign),pool=selectedCampaignPool(campaign,topicId);
+  let ids=pool.map(q=>q.id);
   if(mode==="Ngẫu nhiên")ids=shuffledCopy(ids,sessionId);
   return {
     version:"1.2",kind:"practice",campaignId:campaign.moduleId,campaignName:campaign.name,campaignEndDate:campaign.endDate,
-    sessionId,storageKey:campaignStorageKey(campaign.moduleId,"practice"),bankVersion:`campaign:${campaign.moduleId}:${campaign.version}`,
+    sessionId,campaignTopicId:topicId,campaignTopicName:campaignTopicName(campaign,topicId),storageKey:campaignStorageKey(campaign.moduleId,"practice",topicId),bankVersion:`campaign:${campaign.moduleId}:${campaign.version}`,
     bankId:`campaign_${campaign.moduleId}`,bankName:campaign.name,mode,newOnly:false,questionIds:ids,index:0,states:{},
-    embeddedQuestions:campaign.questions,completed:false
+    embeddedQuestions:pool,completed:false
   };
 }
 function newCampaignExam(campaign){
-  const total=Math.min(campaign.examQuestionCount,campaign.questions.length);
+  const topicId=selectedCampaignTopic(campaign),pool=selectedCampaignPool(campaign,topicId);
+  const total=Math.min(campaign.examQuestionCount,pool.length);
   const sessionId=uid("campaign_exam"),seed=uid("campaign_paper"),now=Date.now();
-  const questions=sample(campaign.questions,total,seed).map(q=>({...q,examSource:"campaign"}));
+  const questions=sample(pool,total,seed).map(q=>({...q,examSource:"campaign"}));
   return {
     version:"1.2",kind:"exam",campaignId:campaign.moduleId,campaignName:campaign.name,campaignEndDate:campaign.endDate,
-    sessionId,storageKey:campaignStorageKey(campaign.moduleId,"exam"),bankVersion:`campaign:${campaign.moduleId}:${campaign.version}`,
+    sessionId,campaignTopicId:topicId,campaignTopicName:campaignTopicName(campaign,topicId),storageKey:campaignStorageKey(campaign.moduleId,"exam",topicId),bankVersion:`campaign:${campaign.moduleId}:${campaign.version}`,
     candidateGroup:"Cuộc thi phong trào",bankId:`campaign_${campaign.moduleId}`,bankName:campaign.name,
     questionIds:shuffledCopy(questions.map(q=>q.id),sessionId),index:0,states:{},submitted:false,score:null,breakdown:{},
     startedAt:now,deadline:now+campaign.examMinutes*60*1000,questions,examTotal:total,examMinutes:campaign.examMinutes
@@ -690,6 +785,7 @@ async function activateSession(session){
     CURRENT_DATA=ACTIVE_DATA;
     const entry=CAMPAIGN_CATALOG.find(x=>x.moduleId===session.campaignId);
     ACTIVE_CAMPAIGN=entry ? await loadCampaign(entry).catch(()=>null) : null;
+    setSessionCampaignTopicSelection(session);
   }else{
     ACTIVE_CAMPAIGN=null;
     const meta=releaseMetaForSession(session);
@@ -753,41 +849,47 @@ async function openCampaign(id){
   }catch(e){alert(`Không mở được Campaign: ${e.message}`);}
 }
 function renderCampaignHome(campaign){
+  rememberView("campaignHome",{moduleId:campaign.moduleId});
   unbindSessionActionBar();document.body.classList.remove("session-mode");
-  const last=loadCampaignLastResult(campaign.moduleId);
+  const topicId=selectedCampaignTopic(campaign);
+  const last=loadCampaignLastResult(campaign.moduleId,topicId);
   const lastHtml=last?`<section class="panel"><div class="section-title">Kết quả gần nhất của cuộc thi</div><div class="small">${last.kind==="practice"?`Luyện tập · Đúng ${last.correct}/${last.graded}`:`Thi thử · ${last.score}/${last.total}`}</div></section>`:"";
   app().innerHTML=`<section class="panel"><div class="row"><button class="btn3d" id="backHome">‹</button><div><div class="eyebrow">CUỘC THI PHONG TRÀO</div><div class="title mt8">${esc(campaign.name)}</div></div></div></section>
   <section class="notice info"><b>Thời gian ôn luyện:</b> ${formatDateTime(campaignStartAt(campaign))} – ${formatDateTime(campaignEndAt(campaign))}<div class="mt8">${esc(campaign.description||"")}</div><div class="mt8"><b>${campaign.questionCount}</b> câu trong module.</div></section>
+  ${campaignHasTopics(campaign)?`<section class="panel"><div class="section-title">Chọn chuyên đề ôn luyện</div><label class="field-label" for="campaignTopicSelect">Phạm vi câu hỏi</label><select id="campaignTopicSelect" class="mt8"><option value="" ${!topicId?"selected":""}>Toàn bộ chuyên đề (${campaign.questions.length} câu)</option>${campaign.topics.map(t=>`<option value="${esc(t.topicId)}" ${topicId===t.topicId?"selected":""}>${esc(t.name)} (${t.questionCount} câu)</option>`).join("")}</select><div class="small mt8">Phạm vi đã chọn áp dụng cho cả Luyện tập và Thi thử. Mỗi chuyên đề lưu phiên riêng.</div></section>`:""}
   <section class="grid2">
     <button class="btn3d action-card" id="campaignPractice" ${campaign.practiceEnabled?"":"disabled"}><div class="action-icon">📘</div><div class="action-title">Luyện tập</div><div class="action-sub">Theo thứ tự hoặc ngẫu nhiên</div></button>
-    <button class="btn3d action-card" id="campaignExam" ${campaign.mockExamEnabled?"":"disabled"}><div class="action-icon">⏱️</div><div class="action-title">Thi thử</div><div class="action-sub">${campaign.examQuestionCount} câu · ${campaign.examMinutes} phút</div></button>
+    <button class="btn3d action-card" id="campaignExam" ${campaign.mockExamEnabled?"":"disabled"}><div class="action-icon">⏱️</div><div class="action-title">Thi thử</div><div class="action-sub">${Math.min(campaign.examQuestionCount,selectedCampaignPool(campaign).length)} câu · ${campaign.examMinutes} phút</div></button>
   </section>${lastHtml}
   <div class="notice mt12">Sau ${formatDateTime(campaignEndAt(campaign))}, module sẽ tự ẩn và dữ liệu riêng của cuộc thi sẽ được xóa khỏi thiết bị.</div>`;
   $("#backHome").onclick=()=>{ACTIVE_CAMPAIGN=null;renderHome();};
+  if(campaignHasTopics(campaign))$("#campaignTopicSelect").onchange=e=>{setSelectedCampaignTopic(campaign,e.target.value||null);renderCampaignHome(campaign);};
   if(campaign.practiceEnabled)$("#campaignPractice").onclick=()=>renderCampaignPracticeMode(campaign);
   if(campaign.mockExamEnabled)$("#campaignExam").onclick=()=>startCampaignExam(campaign);
 }
 function renderCampaignPracticeMode(campaign){
+  rememberView("campaignPracticeMode",{moduleId:campaign.moduleId});
+  const topicId=selectedCampaignTopic(campaign),pool=selectedCampaignPool(campaign,topicId);
   app().innerHTML=`<section class="panel"><div class="row"><button class="btn3d" id="backCampaign">‹</button><div><div class="eyebrow">LUYỆN TẬP CUỘC THI</div><div class="title mt8">${esc(campaign.name)}</div></div></div></section>
   <section class="panel"><div class="section-title">Cách luyện</div><div class="grid2">
     <button class="btn3d choice-card selected" data-campaign-mode="Theo thứ tự">Theo thứ tự</button>
     <button class="btn3d choice-card" data-campaign-mode="Ngẫu nhiên">Ngẫu nhiên</button>
-  </div><div class="panel soft mt16"><div class="eyebrow">ĐÃ CHỌN</div><div class="strong mt8">${esc(campaign.name)}</div><div class="small mt8">${campaign.questionCount} câu · <span id="campaignModeSummary">Luyện theo thứ tự</span></div></div>
+  </div><div class="panel soft mt16"><div class="eyebrow">ĐÃ CHỌN</div><div class="strong mt8">${esc(campaign.name)}</div><div class="small mt8">${pool.length} câu ${campaignHasTopics(campaign)?`· ${esc(campaignTopicName(campaign,topicId))}`:""} · <span id="campaignModeSummary">Luyện theo thứ tự</span></div></div>
   <div class="setup-action-spacer" aria-hidden="true"></div><div class="setup-action-dock"><button class="btn3d primary mt12" style="width:100%" id="startCampaignPractice">Bắt đầu luyện</button></div></section>`;
   let mode="Theo thứ tự";
   document.querySelectorAll("[data-campaign-mode]").forEach(b=>b.onclick=()=>{mode=b.dataset.campaignMode;document.querySelectorAll("[data-campaign-mode]").forEach(x=>x.classList.toggle("selected",x===b));$("#campaignModeSummary").textContent=`Luyện ${mode.toLowerCase()}`;});
   $("#backCampaign").onclick=()=>renderCampaignHome(campaign);
   const cpBtn=$("#startCampaignPractice");
   cpBtn.onclick=guardAction(cpBtn,async()=>{
-    const key=campaignStorageKey(campaign.moduleId,"practice"),existing=loadSession(key);
+    const key=campaignStorageKey(campaign.moduleId,"practice",selectedCampaignTopic(campaign)),existing=loadSession(key);
     if(existing){const choice=await savedSessionChoice();if(choice==="resume"){await activateSession(existing);return;}if(choice==="home"){renderHome();return;}if(choice!=="new")return;}
     const s=newCampaignPractice(campaign,mode);deleteSession(key);saveSession(s);await activateSession(s);
   });
 }
 async function startCampaignExam(campaign){
-  const key=campaignStorageKey(campaign.moduleId,"exam"),existing=loadSession(key);
+  const key=campaignStorageKey(campaign.moduleId,"exam",selectedCampaignTopic(campaign)),existing=loadSession(key);
   if(existing){const choice=await savedSessionChoice();if(choice==="resume"){await activateSession(existing);return;}if(choice==="home"){renderHome();return;}if(choice!=="new")return;}
-  else if(!confirm(`Tạo đề ${campaign.examQuestionCount} câu / ${campaign.examMinutes} phút và bắt đầu ngay?`))return;
+  else if(!confirm(`Tạo đề ${Math.min(campaign.examQuestionCount,selectedCampaignPool(campaign).length)} câu / ${campaign.examMinutes} phút và bắt đầu ngay?`))return;
   const s=newCampaignExam(campaign);deleteSession(key);saveSession(s);await activateSession(s);
 }
 function inAppBrowserNotice(){
@@ -799,6 +901,7 @@ function inAppBrowserNotice(){
 }
 
 function renderHome(){
+  rememberView("home");
   unbindSessionActionBar();
   document.body.classList.remove("session-mode");
   renderHeader();const newTotal=Object.values(ACTIVE_DATA.banks).reduce((n,b)=>n+(b.meta.newCount||0),0);
@@ -816,7 +919,7 @@ function renderHome(){
   </section>
   ${campaignCards()}${lastResultCard()}
   ${loadExamHistory().length?`<section class="panel"><button class="btn3d" style="width:100%" id="goExamHistory">📊 Lịch sử Thi thử</button></section>`:""}
-  <div class="center tiny mt12">Hoạt động offline · Tiến độ lưu trên thiết bị</div><div class="future-banner-slot" aria-hidden="true"></div>`;
+  <div class="center tiny mt12">Hoạt động offline · Tiến độ lưu trên thiết bị</div>`;
   $("#goPractice").onclick=()=>renderPracticeSetup(false);$("#goExam").onclick=()=>renderExamSetup();$("#goUpdate").onclick=()=>renderUpdate();$("#goAbout").onclick=renderAbout;
   if(newTotal>0)$("#goNew").onclick=()=>renderPracticeSetup(true);
   document.querySelectorAll("[data-campaign]").forEach(b=>b.onclick=()=>openCampaign(b.dataset.campaign));
@@ -825,6 +928,7 @@ function renderHome(){
 }
 
 function renderAbout(){
+  rememberView("about");
   unbindSessionActionBar();
   document.body.classList.remove("session-mode");
   renderHeader();
@@ -872,6 +976,7 @@ function groupButtons(selected){
   </div>`;
 }
 function renderPracticeSetup(newOnly=false,selectedGroup="specialist"){
+  rememberView("practiceSetup",{newOnly:!!newOnly,selectedGroup});
   unbindSessionActionBar();
   document.body.classList.remove("session-mode");
   CURRENT_DATA=ACTIVE_DATA;
@@ -886,6 +991,7 @@ function renderPracticeSetup(newOnly=false,selectedGroup="specialist"){
   document.querySelectorAll("[data-bank]").forEach(b=>b.onclick=()=>renderPracticeMode(b.dataset.bank,newOnly));
 }
 function renderPracticeMode(bankId,newOnly){
+  rememberView("practiceMode",{bankId,newOnly:!!newOnly});
   const count=newOnly?bankNewCount(bankId):bank(bankId).questions.length;
   app().innerHTML=`<section class="panel"><div class="row"><button class="btn3d" id="backSetup">‹</button><div><div class="eyebrow">${newOnly?"Luyện câu mới":"Luyện tập"}</div><div class="title mt8">${esc(bank(bankId).meta.name)}</div></div></div></section>
   <section class="panel"><div class="section-title">Cách luyện</div><div class="grid2"><button class="btn3d choice-card selected" data-mode="Theo thứ tự">Theo thứ tự</button><button class="btn3d choice-card" data-mode="Ngẫu nhiên">Ngẫu nhiên</button></div>
@@ -911,6 +1017,7 @@ function examStructureHtml(bp){
 }
 
 function renderExamSetup(selectedGroup="specialist",groupCode="A",bankId=null){
+  rememberView("examSetup",{selectedGroup,groupCode,bankId});
   unbindSessionActionBar();
   document.body.classList.remove("session-mode");
   CURRENT_DATA=ACTIVE_DATA;
@@ -1150,7 +1257,7 @@ function unbindSessionActionBar(){
 }
 function goParentFromSession(){
   const s=currentSession;stopTimer();clearActiveSessionPointer();currentSession=null;CURRENT_DATA=ACTIVE_DATA;
-  if(s?.campaignId && ACTIVE_CAMPAIGN){ if(s.kind==="practice")renderCampaignPracticeMode(ACTIVE_CAMPAIGN); else renderCampaignHome(ACTIVE_CAMPAIGN); return; }
+  if(s?.campaignId && ACTIVE_CAMPAIGN){ setSessionCampaignTopicSelection(s); if(s.kind==="practice")renderCampaignPracticeMode(ACTIVE_CAMPAIGN); else renderCampaignHome(ACTIVE_CAMPAIGN); return; }
   ACTIVE_CAMPAIGN=null;
   if(s?.kind==="practice")renderPracticeMode(s.bankId,!!s.newOnly); else if(s?.kind==="exam")renderExamSetup("specialist",s.groupCode,s.bankId); else renderHome();
 }
@@ -1279,7 +1386,7 @@ function commitPracticeCompletionSafe(session,snap){
     session.practiceResultCommitted=true;
     const persistedSummary={...snap.currentSummary};delete persistedSummary.comparison;
     savePracticeLastResult(session,persistedSummary);
-    if(session.campaignId)saveCampaignLastResult(session.campaignId,persistedSummary);else saveLastResult(persistedSummary);
+    if(session.campaignId)saveCampaignLastResult(session.campaignId,persistedSummary,session.campaignTopicId||null);else saveLastResult(persistedSummary);
   }catch(e){console.warn("Không lưu được mốc so sánh Practice, vẫn hoàn thành bài:",e);}
 }
 function renderPracticeResult(snapshot=null){
@@ -1290,7 +1397,7 @@ function renderPracticeResult(snapshot=null){
   ${practiceComparisonHtml(previous,currentSummary)}
   <section class="panel"><div class="choice-list"><button class="btn3d" id="reviewWrong" ${c.wrong===0?"disabled":""}>Xem lại ${c.wrong} câu sai</button><button class="btn3d" id="repeatPractice">Luyện lại nghiệp vụ này</button><button class="btn3d" id="homeResult">⌂ Về màn hình chính</button></div></section>`;
   $("#reviewWrong").onclick=()=>{s.reviewOnly="wrong";const i=s.questionIds.findIndex(qid=>practiceStatus(s,qid)==="wrong");if(i>=0){s.index=i;renderSession();}};
-  $("#repeatPractice").onclick=()=>{if(s.campaignId&&ACTIVE_CAMPAIGN)renderCampaignPracticeMode(ACTIVE_CAMPAIGN);else{CURRENT_DATA=ACTIVE_DATA;renderPracticeMode(s.bankId,s.newOnly);}};$("#homeResult").onclick=goHome;
+  $("#repeatPractice").onclick=()=>{if(s.campaignId&&ACTIVE_CAMPAIGN){setSessionCampaignTopicSelection(s);renderCampaignPracticeMode(ACTIVE_CAMPAIGN);}else{CURRENT_DATA=ACTIVE_DATA;renderPracticeMode(s.bankId,s.newOnly);}};$("#homeResult").onclick=goHome;
   commitPracticeCompletionSafe(s,snap);
 }
 function finishPracticeSession(session=currentSession){
@@ -1376,7 +1483,7 @@ function renderExamResult(){
   }else{
     historyCommit=saveExamHistory(s);s.examHistoryRecord=historyCommit.record;s.examHistoryCommitted=true;
   }
-  if(s.campaignId)saveCampaignLastResult(s.campaignId,{kind:"exam",bankName:s.bankName,score:s.score,total});
+  if(s.campaignId)saveCampaignLastResult(s.campaignId,{kind:"exam",bankName:s.bankName,score:s.score,total},s.campaignTopicId||null);
   else saveLastResult({kind:"exam",bankName:s.bankName,candidateGroup:s.candidateGroup,score:s.score,total,blank,wrong:total-s.score-blank,percent:total?s.score*100/total:0});
   const heading=s.campaignId?`THI THỬ CUỘC THI PHONG TRÀO<br>${esc(s.campaignName.toUpperCase())}`:`ĐỀ THI NGHIỆP VỤ<br>${esc(s.bankName.toUpperCase())}`;
   const sub=s.campaignId?"":`<div class="small strong mt8">${esc(s.candidateGroup)}</div>`;
@@ -1388,30 +1495,57 @@ function renderExamResult(){
   <section class="panel"><div class="choice-list"><button class="btn3d" id="reviewExamWrong">Xem câu sai</button><button class="btn3d" id="repeatExam">Thi thử lại</button><button class="btn3d" id="homeExamResult">⌂ Về màn hình chính</button></div></section>`;
   document.querySelectorAll("[data-review-exam]").forEach(b=>b.onclick=()=>renderExamReview(Number(b.dataset.reviewExam)));
   $("#reviewExamWrong").onclick=()=>{const i=s.questionIds.findIndex(qid=>examStatus(s,qid)==="wrong");if(i>=0)renderExamReview(i,true);};
-  $("#repeatExam").onclick=()=>{if(s.campaignId&&ACTIVE_CAMPAIGN)startCampaignExam(ACTIVE_CAMPAIGN);else{CURRENT_DATA=ACTIVE_DATA;renderExamSetup("specialist",s.groupCode,s.bankId);}};
+  $("#repeatExam").onclick=()=>{if(s.campaignId&&ACTIVE_CAMPAIGN){setSessionCampaignTopicSelection(s);startCampaignExam(ACTIVE_CAMPAIGN);}else{CURRENT_DATA=ACTIVE_DATA;renderExamSetup("specialist",s.groupCode,s.bankId);}};
   $("#homeExamResult").onclick=goHome;
 }
 function renderExamReview(index,wrongOnly=false){
   const s=currentSession;s.index=index;const q=currentQuestion(s),state=examState(s,q.id),options=optionView(q,s.sessionId),correct=q.options.find(o=>o.correct),chosen=q.options.find(o=>o.id===state.selectedOptionId);
-  app().innerHTML=`<section class="panel"><div class="row between"><div><div class="eyebrow">XEM LẠI BÀI THI</div><div class="small strong mt8">${esc(s.bankName)} · Câu ${index+1}/100</div></div><button class="btn3d" id="backResult">‹ Kết quả</button></div><div class="question mt16">${esc(q.question)}</div><div class="options">${options.map(o=>`<div class="option ${o.id===correct.id?"selected":""}"><span class="letter">${o.displayLabel}</span><span class="option-text">${esc(o.text)}${o.id===state.selectedOptionId?" <b>← Bạn chọn</b>":""}${o.id===correct.id?" <b>✓ Đúng</b>":""}</span></div>`).join("")}</div><div class="feedback ${state.isCorrect?"ok":"bad"}">${state.isCorrect?"✅ Trả lời đúng":"❌ Trả lời sai hoặc bỏ trống"}</div>
+  app().innerHTML=`<section class="panel"><div class="row between"><div><div class="eyebrow">XEM LẠI BÀI THI</div><div class="small strong mt8">${esc(s.bankName)} · Câu ${index+1}/${s.questionIds.length}</div></div><button class="btn3d" id="backResult">‹ Kết quả</button></div><div class="question mt16">${esc(q.question)}</div><div class="options">${options.map(o=>`<div class="option ${o.id===correct.id?"selected":""}"><span class="letter">${o.displayLabel}</span><span class="option-text">${esc(o.text)}${o.id===state.selectedOptionId?" <b>← Bạn chọn</b>":""}${o.id===correct.id?" <b>✓ Đúng</b>":""}</span></div>`).join("")}</div><div class="feedback ${state.isCorrect?"ok":"bad"}">${state.isCorrect?"✅ Trả lời đúng":"❌ Trả lời sai hoặc bỏ trống"}</div>
   <div class="toolbar3"><button class="btn3d" id="prevReview">Câu trước</button><button class="btn3d" id="nextWrong">${wrongOnly?"Câu sai tiếp":"Câu tiếp"}</button><button class="btn3d" id="nextReview">Câu tiếp theo</button></div></section>`;
   $("#backResult").onclick=renderExamResult;$("#prevReview").disabled=index===0;$("#prevReview").onclick=()=>renderExamReview(index-1,wrongOnly);$("#nextReview").disabled=index>=s.questionIds.length-1;$("#nextReview").onclick=()=>renderExamReview(index+1,wrongOnly);
   $("#nextWrong").onclick=()=>{let found=null;for(let step=1;step<=s.questionIds.length;step++){const i=(index+step)%s.questionIds.length;if(examStatus(s,s.questionIds[i])==="wrong"){found=i;break;}}if(found!==null)renderExamReview(found,true);};
 }
 
+function bankUpdateSummaryHtml(){
+  const explicit=Array.isArray(ACTIVE_DATA?.bankUpdateSummary)?ACTIVE_DATA.bankUpdateSummary:null;
+  let items=explicit;
+  if(!items){
+    items=(ACTIVE_DATA?.manifest||[]).map(m=>{
+      const bankCount=Number(m.question_count ?? ACTIVE_DATA?.banks?.[m.id]?.questions?.length ?? 0);
+      const dup=Number(m.duplicate_questions_skipped||0);
+      return {bankId:m.id,bankName:m.name||ACTIVE_DATA?.banks?.[m.id]?.meta?.name||m.id,sourceCount:bankCount+dup,bankCount,excludedCount:dup,excludedDuplicateCount:dup};
+    });
+  }
+  if(!items?.length)return "";
+  const rows=items.map((x,i)=>{
+    const name=x.bankName||x.name||x.bankId||`Nhánh ${i+1}`;
+    const bankCount=Number(x.bankCount ?? x.questionCount ?? 0);
+    const sourceCount=Number(x.sourceCount ?? bankCount);
+    const dup=Number(x.excludedDuplicateCount ?? x.duplicateCount ?? 0);
+    const excluded=Number(x.excludedCount ?? Math.max(0,sourceCount-bankCount));
+    let note=String(x.displayNote||x.note||"").trim();
+    if(!note && dup>0)note=`${String(dup).padStart(2,"0")} câu trùng đã được loại khi Build.`;
+    else if(!note && excluded>0)note=`${String(excluded).padStart(2,"0")} câu không đưa vào Bank sau khi Build.`;
+    return `<div class="list-line bank-summary-line"><span><b>${i+1}. ${esc(name)}:</b> ${bankCount}/${sourceCount} câu${note?`<br><span class="small">${esc(note)}</span>`:""}</span></div>`;
+  }).join("");
+  return `<section class="panel bank-update-summary"><div class="eyebrow">THÔNG TIN NGÂN HÀNG CÂU HỎI HIỆN TẠI</div><div class="small mt8">Phiên bản Bank ${esc(ACTIVE_RELEASE?.bankVersion||"")} · ${Number(ACTIVE_RELEASE?.questionCount||0)} câu · cập nhật ${formatDate(ACTIVE_RELEASE?.publishedAt)}</div><div class="list-lines mt12">${rows}</div></section>`;
+}
+
 async function renderUpdate(){
+  rememberView("update");
   CURRENT_DATA=ACTIVE_DATA;pendingUpdate=null;
   app().innerHTML=`<section class="panel"><div class="row"><button class="btn3d" id="backHome">‹</button><div><div class="eyebrow">NGÂN HÀNG CÂU HỎI</div><div class="title mt8">Cập nhật dữ liệu</div></div></div></section>
   <section class="panel"><div class="eyebrow">PHIÊN BẢN ĐANG DÙNG</div><div class="row between mt8"><div><div class="title">Bank ${esc(ACTIVE_RELEASE.bankVersion)}</div><div class="small mt8">${ACTIVE_RELEASE.questionCount} câu · ${formatDate(ACTIVE_RELEASE.publishedAt)}</div></div><span class="badge primary">Đang hoạt động</span></div></section>
   <section class="panel" id="updateStatus"><div class="center"><div class="small">Bấm để kiểm tra phiên bản mới khi có Internet.</div><button class="btn3d primary mt12" id="checkUpdate">Kiểm tra cập nhật</button></div></section>
-  <div class="center tiny">Chỉ cần Internet khi kiểm tra/tải Bank mới. Sau đó tiếp tục dùng offline.</div>`;
+  <div class="center tiny">Chỉ cần Internet khi kiểm tra/tải Bank mới. Sau đó tiếp tục dùng offline.</div>
+  ${bankUpdateSummaryHtml()}`;
   $("#backHome").onclick=renderHome;$("#checkUpdate").onclick=checkForUpdate;
 }
 async function checkForUpdate(){
   const box=$("#updateStatus");box.innerHTML=`<div class="center"><b>Đang kiểm tra…</b></div>`;
   try{
     const latest=await fetchJson(`${LATEST_URL}?t=${Date.now()}`,{cache:"no-store"});
-    if(latest.bankVersion===ACTIVE_RELEASE.bankVersion){box.innerHTML=`<div class="notice info"><b>Ngân hàng đang là phiên bản mới nhất.</b><div class="mt8">Bank ${esc(latest.bankVersion)} · ${latest.questionCount} câu.</div></div><button class="btn3d mt12" id="checkAgain">Kiểm tra lại</button>`;$("#checkAgain").onclick=checkForUpdate;return;}
+    if(sameBankRelease(latest,ACTIVE_RELEASE)){box.innerHTML=`<div class="notice info"><b>Ngân hàng đang là phiên bản mới nhất.</b><div class="mt8">Bank ${esc(latest.bankVersion)} · ${latest.questionCount} câu.</div></div><button class="btn3d mt12" id="checkAgain">Kiểm tra lại</button>`;$("#checkAgain").onclick=checkForUpdate;return;}
     pendingUpdate=latest;
     box.innerHTML=`<div class="panel accent"><div class="row between"><div><div class="eyebrow">CÓ BẢN MỚI</div><div class="title mt8">Bank ${esc(latest.bankVersion)}</div><div class="small mt8">Phát hành ${formatDate(latest.publishedAt)}</div></div><span class="badge new">MỚI</span></div>
     <div class="grid3 mt16"><div class="metric"><strong>${latest.newCount}</strong><span>Câu mới</span></div><div class="metric"><strong>${latest.updatedCount}</strong><span>Câu cập nhật</span></div><div class="metric"><strong>${latest.questionCount}</strong><span>Tổng câu</span></div></div>
@@ -1427,6 +1561,7 @@ async function downloadUpdate(){
     box.innerHTML=`<div class="notice info"><b>✅ Cập nhật thành công Bank ${esc(ACTIVE_RELEASE.bankVersion)}</b><div class="mt8">${ACTIVE_RELEASE.newCount} câu mới · ${ACTIVE_RELEASE.updatedCount} câu cập nhật · ${ACTIVE_RELEASE.questionCount} câu tổng.</div></div>
     ${newByBank.length?`<div class="panel mt12"><div class="section-title">Nghiệp vụ có câu mới</div><div class="list-lines">${newByBank.map(b=>`<div class="list-line"><span>${esc(b.meta.name)}</span><b>${b.meta.newCount}</b></div>`).join("")}</div></div><button class="btn3d primary" style="width:100%" id="goNewAfterUpdate">🆕 Luyện câu mới</button>`:""}
     <button class="btn3d mt12" style="width:100%" id="homeAfterUpdate">Về màn hình chính</button>`;
+    const summary=document.querySelector(".bank-update-summary");if(summary)summary.outerHTML=bankUpdateSummaryHtml();
     if($("#goNewAfterUpdate"))$("#goNewAfterUpdate").onclick=()=>renderPracticeSetup(true);$("#homeAfterUpdate").onclick=renderHome;
   }catch(e){box.innerHTML=`<div class="notice error"><b>❌ Cập nhật không thành công.</b><div class="mt8">${esc(e.message)} Bank cũ vẫn được giữ nguyên.</div></div><button class="btn3d mt12" id="retryDownload">Thử lại</button>`;$("#retryDownload").onclick=downloadUpdate;}
 }
@@ -1457,10 +1592,10 @@ function resumeFromIOSLifecycle(){
   setTimeout(syncIOSViewport,180);
 }
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="hidden") persistActiveSessionForLifecycle();
+  if(document.visibilityState==="hidden"){ updateRememberedScroll(); persistActiveSessionForLifecycle(); }
   else resumeFromIOSLifecycle();
 });
-window.addEventListener("pagehide",persistActiveSessionForLifecycle);
+window.addEventListener("pagehide",()=>{updateRememberedScroll();persistActiveSessionForLifecycle();});
 window.addEventListener("pageshow",resumeFromIOSLifecycle);
 window.addEventListener("orientationchange",()=>setTimeout(syncIOSViewport,120));
 window.addEventListener("resize",syncIOSViewport,{passive:true});
@@ -1545,6 +1680,7 @@ prepareHistoryBase();armHistoryGuard();
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e;const b=$("#installBtn");if(b)b.classList.remove("hidden");});
 let swRegistration=null;
 function persistBeforeShellReload(){
+  updateRememberedScroll();
   try{ if(currentSession) persistActiveSessionForLifecycle(); }catch(e){ console.warn("Không thể lưu phiên trước khi cập nhật shell:",e); }
 }
 async function verifyFreshShell(){
@@ -1582,6 +1718,35 @@ async function registerSW(){
     document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){reg.update().catch(()=>{});verifyFreshShell();}});
   }catch(e){console.warn("Service worker:",e);}
 }
+async function restoreViewAfterReload(){
+  const state=rememberedView();
+  if(!state||!state.name||state.name==="home")return false;
+  const p=state.params||{};
+  try{
+    switch(state.name){
+      case "about": renderAbout(); break;
+      case "update": await renderUpdate(); break;
+      case "practiceSetup": renderPracticeSetup(!!p.newOnly,p.selectedGroup||"specialist"); break;
+      case "practiceMode":
+        if(p.bankId && ACTIVE_DATA?.banks?.[p.bankId])renderPracticeMode(p.bankId,!!p.newOnly);else return false;
+        break;
+      case "examSetup": renderExamSetup(p.selectedGroup||"specialist",p.groupCode||"A",p.bankId||null); break;
+      case "examHistory": renderExamHistory(); break;
+      case "campaignHome":
+      case "campaignPracticeMode": {
+        const entry=CAMPAIGN_CATALOG.find(x=>x.moduleId===p.moduleId);
+        if(!entry||campaignStatus(entry)!=="ACTIVE")return false;
+        const campaign=await loadCampaign(entry);ACTIVE_CAMPAIGN=campaign;
+        if(state.name==="campaignPracticeMode")renderCampaignPracticeMode(campaign);else renderCampaignHome(campaign);
+        break;
+      }
+      default:return false;
+    }
+    restoreRememberedScroll(state);
+    return true;
+  }catch(e){console.warn("Không thể khôi phục màn hình trước reload:",e);return false;}
+}
+
 function migrateLegacyStorage(){
   try{
     for(const legacyPrefix of LEGACY_STORAGE_PREFIXES){
@@ -1617,6 +1782,8 @@ async function boot(){
       try{await activateSession(session);return;}catch(e){console.warn("Không thể tự khôi phục phiên sau reload:",e);clearActiveSessionPointer();}
     }else clearActiveSessionPointer();
   }
+  if(await restoreViewAfterReload()){setTimeout(()=>checkBankUpdateReminder(),350);return;}
   renderHome();
+  setTimeout(()=>checkBankUpdateReminder(),350);
 }
 boot().catch(e=>{app().innerHTML=`<section class="notice error"><b>Không nạp được ứng dụng.</b><div class="mt8">${esc(e.message)}</div><div class="mt8">Hãy mở qua HTTPS hoặc localhost.</div></section>`;});

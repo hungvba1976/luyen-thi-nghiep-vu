@@ -1,8 +1,8 @@
-const APP_CACHE = "luyenthi-v130-app-final-clean";
+const APP_CACHE = "luyenthi-v131-app-campaign-multi-topic-prod01";
 const BANK_CACHE = "luyenthi-v130-bank-releases";
 const CAMPAIGN_CACHE = "luyenthi-v130-campaign-modules";
 const APP_ASSETS = [
-  "./index.html","./styles.css?v=v1.3.0-final-clean-release","./app.js?v=v1.3.0-final-clean-release",
+  "./index.html","./styles.css?v=v1.3.1-campaign-multi-topic-prod01","./app.js?v=v1.3.1-campaign-multi-topic-prod01",
   "./manifest.webmanifest","./version.json",
   "./icon-192.png","./icon-512.png","./apple-touch-icon-180.png","./donate-qr.png"
 ];
@@ -22,7 +22,7 @@ self.addEventListener("activate", event => {
   event.waitUntil((async()=>{
     const keys=await caches.keys();
     await Promise.all(keys.filter(k =>
-      (k.startsWith("luyenthi-v12-") || k.startsWith("luyenthi-v13-") || k.startsWith("luyenthi-v13field-")) &&
+      (k.startsWith("luyenthi-v12-") || k.startsWith("luyenthi-v13-") || k.startsWith("luyenthi-v13field-") || k.startsWith("luyenthi-v131-app-")) &&
       ![APP_CACHE,BANK_CACHE,CAMPAIGN_CACHE].includes(k)
     ).map(k=>caches.delete(k)));
     await self.clients.claim();

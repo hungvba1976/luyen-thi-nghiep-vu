@@ -247,8 +247,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .setup-start-note{margin-top:3px}
 }
 @supports not (height:100dvh){.setup-action-dock{max-height:48vh}}
-.future-banner-slot{min-height:12px;max-width:520px;margin:8px auto calc(4px + env(safe-area-inset-bottom,0px));pointer-events:none}
-body.session-mode .future-banner-slot{display:none}
 
 /* Fix #09: keep native pull-to-refresh/overscroll from interrupting an active session where supported. */
 html:has(body.session-mode),
