@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "moduleId": "dai_su_van_hoa_agribank_2026",
+  "productId": "luyen_thi_nghiep_vu",
+  "type": "campaign",
+  "name": "ĐẠI SỨ VĂN HÓA AGRIBANK 2026",
+  "description": "",
+  "version": "1.0",
+  "status": "ACTIVE",
+  "startDate": "2026-11-04",
+  "endDate": "2026-11-30",
+  "startAt": "2026-11-04T08:00:00+07:00",
+  "endAt": "2026-11-30T17:00:00+07:00",
+  "practiceEnabled": true,
+  "mockExamEnabled": true,
+  "examQuestionCount": 20,
+  "examMinutes": 5,
+  "shuffleQuestions": true,
+  "icon": "🏆",
+  "demo": false,
+  "questionsUrl": "./campaigns/dai_su_van_hoa_agribank_2026/questions.json",
+  "questionCount": 1715,
+  "checksumSha256": "add212a4c4bea0cf3435a9bb1a82a845d5946468b0840e6eb9bfbb37d4f7a781",
+  "multiTopicEnabled": true,
+  "topics": [
+    {
+      "topicId": "vb_1345_chuan_muc_dao_duc",
+      "name": "VB 1345-Chuan muc dao duc",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb_1380_bo_tieu_chuan_esg",
+      "name": "VB 1380-Bo tieu chuan ESG",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb_2209_quy_dinh_tien_gui_tiet_kiem",
+      "name": "VB 2209-Quy dinh tien gui tiet kiem",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb_238_quy_dinh_trang_phuc",
+      "name": "VB 238-Quy dinh trang phuc",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb_3896_dam_bao_an_toan_htcntt",
+      "name": "VB 3896-Dam bao an toan HTCNTT",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb_5925_so_tay_danh_muc_spdv",
+      "name": "VB 5925-So tay danh muc SPDV",
+      "questionCount": 300
+    },
+    {
+      "topicId": "vb_8374_quy_dinh_ve_hinh_anh_thuong_hieu_truyen_thong",
+      "name": "VB 8374-Quy dinh ve hinh anh, thuong hieu, truyen thong",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb_999_tieu_chuan_phuc_vu_khach_hang",
+      "name": "VB 999-Tieu chuan phuc vu khach hang",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb_cam_nang_van_hoa",
+      "name": "VB Cam nang van hoa",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb12868_cv_pn_tra_no_tctd_khac",
+      "name": "VB12868-CV PN tra no TCTD khac",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb1445_1846_quy_dinh_bao_lanh",
+      "name": "VB1445,1846-Quy dinh Bao lanh",
+      "questionCount": 100
+    },
+    {
+      "topicId": "vb1866_2439_quy_dinh_cho_vay",
+      "name": "VB1866, 2439-Quy dinh cho vay",
+      "questionCount": 150
+    },
+    {
+      "topicId": "vb2239_quy_dinh_the",
+      "name": "VB2239-Quy dinh The",
+      "questionCount": 150
+    },
+    {
+      "topicId": "vb2345_quy_dinh_phan_loai_khach_hang",
+      "name": "VB2345-Quy dinh phan loai khach hang",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb2966_quy_dinh_tien_gui_sinh_loi_thong_minh",
+      "name": "VB2966-Quy dinh tien gui sinh loi thong minh",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb3325_mo_va_su_dung_tktt",
+      "name": "VB3325-Mo va su dung TKTT",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb346_466_quy_che_bao_lanh",
+      "name": "VB346, 466-Quy che Bao lanh",
+      "questionCount": 65
+    },
+    {
+      "topicId": "vb456_648_quy_che_cho_vay",
+      "name": "VB456, 648- Quy che cho vay",
+      "questionCount": 150
+    },
+    {
+      "topicId": "vb656_quy_dinh_tien_gui_co_ky_han",
+      "name": "VB656-Quy dinh Tien gui co ky han",
+      "questionCount": 50
+    },
+    {
+      "topicId": "vb910_565_1502_quy_dinh_pln_tldprr",
+      "name": "VB910, 565, 1502-Quy dinh PLN, TLDPRR",
+      "questionCount": 150
+    }
+  ]
+}
