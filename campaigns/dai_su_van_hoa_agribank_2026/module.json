@@ -10,7 +10,7 @@
   "startDate": "2026-11-04",
   "endDate": "2026-11-30",
   "startAt": "2026-11-04T08:00:00+07:00",
-  "endAt": "2026-11-30T17:00:00+07:00",
+  "endAt": "2036-12-31T17:00:00+07:00",
   "practiceEnabled": true,
   "mockExamEnabled": true,
   "examQuestionCount": 20,
