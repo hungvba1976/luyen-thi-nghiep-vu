@@ -7,9 +7,9 @@
       "version": "1.0",
       "status": "ACTIVE",
       "startDate": "2026-11-04",
-      "endDate": "2026-11-30",
+      "endDate": "2036-12-31",
       "startAt": "2026-11-04T08:00:00+07:00",
-      "endAt": "2026-11-30T17:00:00+07:00",
+      "endAt": "2036-12-31T17:00:00+07:00",
       "moduleUrl": "./campaigns/dai_su_van_hoa_agribank_2026/module.json",
       "icon": "🏆",
       "demo": false
